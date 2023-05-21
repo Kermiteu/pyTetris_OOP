@@ -1,1 +1,275 @@
-print("This is the start")
+# Simple OOP project in Python 2.7.#. Result: Tetris game. Requirements: pygame >> pip install pygame or
+# conda install -c cogsci pygame
+
+# Steps:
+# 1. create shapes and make it colorfull
+# 2. Make class "figure"
+# 3. Make gamespace "tetris"
+# 4. Make rules and controls (intersects, score, moving, breaking)
+# 5. Make events and game end
+# 6. Make run and test.
+
+
+import pygame
+import random
+
+# Shapes of the figures:
+shapes = [
+    [[1, 5, 9, 13], [4, 5, 6, 7]],  # line
+    [[4, 5, 9, 10], [2, 6, 5, 9]],  # S
+    [[6, 7, 9, 10], [1, 5, 6, 10]],  # S (reversed)
+    [[2, 1, 5, 9], [0, 4, 5, 6], [1, 5, 9, 8], [4, 5, 6, 10]],  # L
+    [[1, 2, 6, 10], [5, 6, 7, 9], [2, 6, 10, 11], [3, 5, 6, 7]],  # L part 2 (reversed)
+    [[1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9], [1, 5, 6, 9]],  # T
+    [[1, 2, 5, 6]],  # square
+]
+
+# Colors of the figures (global)
+shapeColors = [(128, 128, 128),
+                (0, 128, 128),
+                (255, 0, 0),
+                (0, 255, 0),
+                (255, 127, 0),
+                (0, 0, 255),
+                (128, 0, 128),
+                (255, 255, 0)]
+
+width = 700
+height = 600
+gameWidth = 300  # meaning 300 // 10 = 30 width per figure
+gameHeight = 600  # meaning 600 // 20 = 20 height per blo ck
+figureSize = 20
+topLeft_x = (width - gameWidth) // 2
+topLeft_y = height - gameHeight - 50
+
+
+class figure:
+    x = 0
+    y = 0
+    n = 0
+
+    def __init__(self, x, y, n):
+        self.x = x
+        self.y = y
+        self.type = n
+        self.color = n+1  # when == 0 then shape disappear?
+        self.rotation = 0
+
+    def image(self):
+        return shapes[self.type][self.rotation]
+
+    def rotate(self):
+        self.rotation = (self.rotation + 1) % len(shapes[self.type])
+
+
+class Tetris:
+    def __init__(self, height, width):
+        self.level = 2
+        self.score = 0
+        self.state = "start"
+        self.field = []
+        self.height = 0
+        self.width = 0
+        self.x = 100
+        self.y = 60
+        self.zoom = 20
+        self.figure = None
+        self.nextfigure = None
+
+        # Board Creation
+        self.height = height
+        self.width = width
+        for i in range(height):
+            new_line = []
+            for j in range(width):
+                new_line.append(0)
+            self.field.append(new_line)
+
+    # Creates a new figure and next figure to show.
+    def new_figure(self):
+        self.figure = figure(3, 0, random.randint(0, len(shapes) - 1))
+
+    def next_figure(self):
+        self.nextfigure = figure(3, 0, random.randint(0, len(shapes) - 1))
+
+    # Checks if the figures touch each other or top
+    def intersects(self):
+        intersection = False
+        for i in range(4):
+            for j in range(4):
+                if i * 4 + j in self.figure.image():
+                    if i + self.figure.y > self.height - 1 or \
+                            j + self.figure.x > self.width - 1 or \
+                            j + self.figure.x < 0 or \
+                            self.field[i + self.figure.y][j + self.figure.x] > 0:
+                        intersection = True
+        return intersection
+
+    # Touching others and top
+    def freeze(self):
+        for i in range(4):
+            for j in range(4):
+                if i * 4 + j in self.figure.image():
+                    self.field[i + self.figure.y][j + self.figure.x] = self.figure.color
+        self.break_lines()  # Checking if any row is formed
+        self.figure = self.nextfigure
+        self.next_figure()  # Creating a new figure
+        if self.intersects():  # If figures touch the top of the board, then end game by setting status as gameover
+            self.state = "gameover"
+
+    # Checks if a row is formed and destroys that line
+    def break_lines(self):
+        lines = 0
+        for i in range(1, self.height):
+            zeros = 0
+            for j in range(self.width):
+                if self.field[i][j] == 0:
+                    zeros += 1
+            if zeros == 0:
+                lines += 1
+                for i1 in range(i, 1, -1):
+                    for j in range(self.width):
+                        self.field[i1][j] = self.field[i1 - 1][j]
+        self.score += lines ** 2
+
+    def draw_next_figure(self, screen):
+        wx = topLeft_x + gameWidth - 35
+        hy = topLeft_y + gameHeight / 2 - 150
+
+        for i in range(4):
+            for j in range(4):
+                p = i * 4 + j
+                if p in self.nextfigure.image():
+                    pygame.draw.rect(screen, shapeColors[self.nextfigure.color], (wx + j * 20, hy + i * 20, 20, 20), 0)
+
+    # Moves the figure to the bottom
+    def moveBottom(self):
+        while not self.intersects():
+            self.figure.y += 1
+        self.figure.y -= 1
+        self.freeze()
+
+    # Moves the figure down by a unit
+    def go_down(self):
+        self.figure.y += 1
+        if self.intersects():
+            self.figure.y -= 1
+            self.freeze()
+
+    # This function moves the figure horizontally
+    def go_sides(self, dx):
+        old_x = self.figure.x
+        self.figure.x += dx
+        if self.intersects():
+            self.figure.x = old_x
+
+    # This function rotates the figure
+    def rotate(self):
+        old_rotation = self.figure.rotation
+        self.figure.rotate()
+        if self.intersects():
+            self.figure.rotation = old_rotation
+
+
+#pygame.font.init()
+pygame.init()
+
+
+def stert():
+    done = False
+    clock = pygame.time.Clock()
+    fps = 20
+    game = Tetris(20, 10)
+    counter = 0
+
+    pressing_down = False
+
+    while not done:
+        if game.figure is None:
+            game.new_figure()
+        if game.nextfigure is None:
+            game.next_figure()
+        counter += 1
+        if counter > 100000:
+            counter = 0
+
+        # Moving the figure continuously with time or when down key is pressed
+        if counter % (fps // game.level // 2) == 0 or pressing_down:
+            if game.state == "start":
+                game.go_down()
+        # Checking which key is pressed and running corresponding function
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    game.rotate()
+                if event.key == pygame.K_DOWN:
+                    game.go_down()
+                if event.key == pygame.K_LEFT:
+                    game.go_sides(-1)
+                if event.key == pygame.K_RIGHT:
+                    game.go_sides(1)
+                if event.key == pygame.K_SPACE:
+                    game.moveBottom()
+                if event.key == pygame.K_ESCAPE:
+                    return
+
+        screen.fill((255, 255, 255))
+
+        # Updating the game board regularly
+        for i in range(game.height):
+            for j in range(game.width):
+                pygame.draw.rect(screen, (128, 128, 128),
+                                 [game.x + game.zoom * j, game.y + game.zoom * i, game.zoom, game.zoom], 1)
+                if game.field[i][j] > 0:
+                    pygame.draw.rect(screen, shapeColors[game.field[i][j]],
+                                     [game.x + game.zoom * j + 1, game.y + game.zoom * i + 1, game.zoom - 2,
+                                      game.zoom - 1])
+
+        # Updating the board with the moving figure
+        if game.figure is not None:
+            for i in range(4):
+                for j in range(4):
+                    p = i * 4 + j
+                    if p in game.figure.image():
+                        pygame.draw.rect(screen, shapeColors[game.figure.color],
+                                         [game.x + game.zoom * (j + game.figure.x) + 1,
+                                          game.y + game.zoom * (i + game.figure.y) + 1,
+                                          game.zoom - 2, game.zoom - 2])
+
+        # Showing the score
+        font = pygame.font.SysFont('Calibri', 26, True, False)
+        text = font.render("Score: " + str(game.score), True, (0, 0, 0))
+        text2 = font.render("Next:", True, (0, 0, 0))
+        text_game_over = font.render("Game Over", True, (0, 0, 0))
+        text_game_over1 = font.render("Press ESC to return", True, (0, 0, 0))
+
+        screen.blit(text, [100, 10])
+        screen.blit(text2, [400, 55])
+
+        if game.state == "gameover":
+            screen.blit(text_game_over, [400, 200])
+            screen.blit(text_game_over1, [400, 230])
+
+        game.draw_next_figure(screen)
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Tetris for PPZO")
+run = True
+while run:
+    screen.fill((64, 224, 208))
+    font = pygame.font.SysFont("Calibri", 42, bold=True)
+    label = font.render("Press any key to begin!", True, (0, 0, 0))
+    screen.blit(label, (155, 270))
+    pygame.display.update()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+        if event.type == pygame.KEYDOWN:
+            stert()
+pygame.quit()
