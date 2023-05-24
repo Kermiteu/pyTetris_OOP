@@ -1,5 +1,5 @@
 ## pyTetris_OOP
-It is an app for OOP based on many creations avavaible in GIT and other internet souruces. App is rather dull but i have made all i can in my free time. First commit on 21.05, maybe i will do some better job later.
+It is an app for OOP based on many creations avavaible in GIT and other internet souruces. App is rather dull but i have made all i can in my free time. First commit after some offline testing, on 21.05, maybe i will do some better job later.
 
 ## What do you need to run it
 Project is in Python 2.7.#. and needs pygame. You can install it by:
