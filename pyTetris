@@ -36,8 +36,8 @@ shapeColors = [(128, 128, 128),
 
 width = 700
 height = 600
-gameWidth = 300  # meaning 300 // 10 = 30 width per figure
-gameHeight = 600  # meaning 600 // 20 = 20 height per blo ck
+gameWidth = 300
+gameHeight = 600
 figureSize = 20
 topLeft_x = (width - gameWidth) // 2
 topLeft_y = height - gameHeight - 50
@@ -105,18 +105,6 @@ class Tetris:
                         intersection = True
         return intersection
 
-    # Touching others and top
-    def freeze(self):
-        for i in range(4):
-            for j in range(4):
-                if i * 4 + j in self.figure.image():
-                    self.field[i + self.figure.y][j + self.figure.x] = self.figure.color
-        self.break_lines()  # Checking if any row is formed
-        self.figure = self.nextfigure
-        self.next_figure()  # Creating a new figure
-        if self.intersects():  # If figures touch the top of the board, then end game by setting status as gameover
-            self.state = "gameover"
-
     # Checks if a row is formed and destroys that line
     def break_lines(self):
         lines = 0
@@ -142,19 +130,31 @@ class Tetris:
                 if p in self.nextfigure.image():
                     pygame.draw.rect(screen, shapeColors[self.nextfigure.color], (wx + j * 20, hy + i * 20, 20, 20), 0)
 
+    # Touching others and top
+    def update(self):
+        for i in range(4):
+            for j in range(4):
+                if i * 4 + j in self.figure.image():
+                    self.field[i + self.figure.y][j + self.figure.x] = self.figure.color
+        self.break_lines()  # Checking if any row is formed
+        self.figure = self.nextfigure
+        self.next_figure()  # Creating a new figure
+        if self.intersects():  # If figures touch the top of the board, then end game by setting status as gameover
+            self.state = "gameover"
+
     # Moves the figure to the bottom
     def moveBottom(self):
         while not self.intersects():
             self.figure.y += 1
         self.figure.y -= 1
-        self.freeze()
+        self.update()
 
     # Moves the figure down by a unit
     def go_down(self):
         self.figure.y += 1
         if self.intersects():
             self.figure.y -= 1
-            self.freeze()
+            self.update()
 
     # This function moves the figure horizontally
     def go_sides(self, dx):
@@ -171,12 +171,11 @@ class Tetris:
             self.figure.rotation = old_rotation
 
 
-#pygame.font.init()
 pygame.init()
 
 
-def stert():
-    done = False
+def play():
+    fail = False
     clock = pygame.time.Clock()
     fps = 20
     game = Tetris(20, 10)
@@ -184,7 +183,7 @@ def stert():
 
     pressing_down = False
 
-    while not done:
+    while not fail:
         if game.figure is None:
             game.new_figure()
         if game.nextfigure is None:
@@ -200,7 +199,7 @@ def stert():
         # Checking which key is pressed and running corresponding function
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                done = True
+                fail = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     game.rotate()
@@ -271,5 +270,5 @@ while run:
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.KEYDOWN:
-            stert()
+            play()
 pygame.quit()
